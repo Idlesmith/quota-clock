@@ -13,6 +13,15 @@ A zero-dependency Node.js CLI and library to record AI service quota reset times
 
 ## Installation
 
+From a source checkout (no dependency installation needed):
+
+```bash
+node bin/quota-clock.mjs help
+npm test
+```
+
+To register the local checkout as `quota-clock`, run `npm link`.
+
 Install globally via npm:
 
 ```bash
@@ -33,6 +42,8 @@ quota-clock list [--json]
 quota-clock rm <service> [window]
 quota-clock help
 ```
+
+`list` shows service, window, next reset in local time, remaining wait, and note. An expired non-repeating window shows `今使える` (available now). Repeating windows roll forward to their next reset. `list --json` returns the library entries with ISO timestamps and remaining milliseconds.
 
 ### `<when>` formats
 

@@ -13,6 +13,15 @@ Claude や Codex などの AI サービスごとに、5時間枠や週間枠の�
 
 ## 導入（インストール）
 
+ソースを取得した場合は、依存パッケージをインストールせずに実行できます：
+
+```bash
+node bin/quota-clock.mjs help
+npm test
+```
+
+ローカルのソースを `quota-clock` コマンドとして登録するには `npm link` を実行します。
+
 グローバルにインストールする場合：
 
 ```bash
@@ -33,6 +42,8 @@ quota-clock list [--json]
 quota-clock rm <service> [window]
 quota-clock help
 ```
+
+`list` はサービス・枠・ローカル時刻での次回リセット・残り時間・メモを表示します。周期のない枠でリセット時刻を過ぎたものは「今使える」と表示し、周期枠は次回リセットへ繰り上げます。`list --json` は ISO 日時と残りミリ秒を含むライブラリの一覧データを返します。
 
 ### `<when>`（リセット時刻）の指定形式
 
