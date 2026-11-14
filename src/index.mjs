@@ -1,8 +1,8 @@
 import { parseWhen, nextReset, formatRemaining } from './time.mjs';
 import { defaultHome, load, save, DEFAULT_PERIODS } from './store.mjs';
-import { collect } from './collectors/index.mjs';
+import { collect, collectors, claudeCodeCollector } from './collectors/index.mjs';
 
-export { parseWhen, nextReset, formatRemaining, defaultHome, DEFAULT_PERIODS, collect };
+export { parseWhen, nextReset, formatRemaining, defaultHome, DEFAULT_PERIODS, collect, collectors, claudeCodeCollector };
 
 const name = (value, what) => {
   const result = String(value ?? '').trim();
@@ -54,7 +54,7 @@ export function createClock({ home = defaultHome(), now = () => new Date() } = {
     async sync(options = {}) {
       const at = options.now === undefined ? nowDate() : new Date(typeof options.now === 'function' ? options.now() : options.now);
       if (Number.isNaN(at.getTime())) throw new Error('Invalid collection time.');
-      const records = Array.isArray(options) ? options : options.records ?? await collect({ collectors: options.collectors, now: at });
+      const records = Array.isArray(options) ? options : options.records ?? await collect({ collectors: options.collectors, now: at, home });
       if (!Array.isArray(records)) throw new Error('records must be an array.');
       const normalized = records.map(record => {
         if (!record || typeof record !== 'object' || Array.isArray(record)) throw new Error('Invalid collector record.');

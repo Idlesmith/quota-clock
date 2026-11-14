@@ -40,6 +40,7 @@ npx quota-clock help
 quota-clock set <service> <window> <when> [--used percent] [--note text] [--period minutes]
 quota-clock list [--json]
 quota-clock sync
+quota-clock statusline [--chain <command>]
 quota-clock rm <service> [window]
 quota-clock help
 ```
@@ -123,7 +124,35 @@ clock.remove('claude');
 JSON の追加項目は `usedPercent`（数値または null）・`source`（文字列）・`fetchedAt`（ISO 日時または null）です。
 旧データは使用率・取得時刻が不明、取得元は `manual` として読み込めます。使用率は取得時点の記録のため、周期枠のリセット時刻が繰り上がっても自動でゼロにはなりません。
 
-`quota-clock sync` は登録した collector を実行して結果を保存します。**組み込み collector はまだ未登録です**。現時点では取得データなしと表示し、保存先を変更しません。
+`quota-clock sync` は登録された collector を実行して結果を保存します。
+
+### Claude Code `statusLine` 連携
+
+Claude Code はカスタムステータスラインコマンドの標準入力（`stdin`）へセッション JSON を渡し、その中に `rate_limits.five_hour` と `rate_limits.seven_day`（`used_percentage` と `resets_at`）が含まれます。
+`quota-clock statusline` は標準入力から `rate_limits` のみを `<home>/claude-code.json` に書き出し（会話内容やパス・認証情報は一切保存しません）、標準出力に短い1行サマリを返します。その後 `quota-clock sync` を実行すると、組み込みの `claude-code` collector がそのファイルを読み込んで反映します。
+
+`~/.claude/settings.json` の設定例（`quota-clock` が自動で `settings.json` を書き換えることはありません）：
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "quota-clock statusline"
+  }
+}
+```
+
+既存の statusline コマンドを使っている場合は、`--chain` を指定すると元のコマンドへ同じ `stdin` を渡してその出力をそのまま表示できます：
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "quota-clock statusline --chain \"~/.claude/my-statusline.sh\""
+  }
+}
+```
+
 外部ツールからは公開 API を利用できます：
 
 ```js

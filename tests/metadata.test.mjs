@@ -76,7 +76,12 @@ test('collect supports async functions and named objects without mutating record
   assert.equal(now.getUTCFullYear(), 2026);
   const anonymous = await collect({ collectors: [() => [record({ source: undefined })]], now });
   assert.equal(anonymous[0].source, 'collector');
-  assert.deepEqual(await collect(), []);
+  const { home: emptyHome } = fixture({ after: () => {} });
+  try {
+    assert.deepEqual(await collect({ now, home: emptyHome }), []);
+  } finally {
+    fs.rmSync(emptyHome, { recursive: true, force: true });
+  }
 });
 
 test('sync imports batches once and updates only matching windows', async t => {
