@@ -138,7 +138,7 @@ test('--used is persisted and shown with source and collection time', t => {
   assert.ok(Number.isFinite(Date.parse(row.fetchedAt)));
   const output = ok('list');
   assert.match(output, /Used\s+Source\s+Fetched \(local\)/);
-  assert.match(output, /42\.5%\s+manual/);
+  assert.match(output, /\b43%\s+manual/, 'table rounds to whole percent; JSON keeps 42.5');
   ok('set', 'demo', '5h', '1h', '--used', '0');
   assert.match(ok('list'), /0%\s+manual/);
   ok('set', 'demo', '5h', '1h', '--used', '100');

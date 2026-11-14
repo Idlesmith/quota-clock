@@ -82,7 +82,7 @@ async function main() {
     }
     const table = [
       ['Service', 'Window', 'Next reset (local)', 'Remaining', 'Note', 'Used', 'Source', 'Fetched (local)'],
-      ...rows.map(row => [row.service, row.window, new Date(row.nextResetAt).toLocaleString(), row.remainingMs === 0 ? '今使える' : row.remaining, row.note, row.usedPercent === null ? '-' : `${row.usedPercent}%`, row.source, row.fetchedAt === null ? '-' : new Date(row.fetchedAt).toLocaleString()]),
+      ...rows.map(row => [row.service, row.window, new Date(row.nextResetAt).toLocaleString(), row.remainingMs === 0 ? '今使える' : row.remaining, row.note, row.usedPercent === null ? '-' : `${Math.round(row.usedPercent)}%`, row.source, row.fetchedAt === null ? '-' : new Date(row.fetchedAt).toLocaleString()]),
     ].map(row => row.map(cell));
     const widths = table[0].map((_, i) => Math.max(...table.map(row => [...row[i]].length)));
     console.log(table.map(row => row.map((value, i) => value + ' '.repeat(widths[i] - [...value].length)).join('  ').trimEnd()).join('\n'));
