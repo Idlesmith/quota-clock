@@ -1,11 +1,14 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
 import { parseArgs } from 'node:util';
 import { createClock } from '../src/index.mjs';
+import { writeClaudeCodeStatusline, runStatuslineChain } from '../src/collectors/claude-code.mjs';
 
 const usage = `Usage:
   quota-clock set <service> <window> <when> [--used percent] [--note text] [--period minutes]
   quota-clock list [--json]
   quota-clock sync
+  quota-clock statusline [--chain <command>]
   quota-clock rm <service> [window]
   quota-clock help
 
@@ -22,6 +25,7 @@ async function main() {
     set: { used: { type: 'string' }, note: { type: 'string' }, period: { type: 'string' } },
     list: { json: { type: 'boolean' } },
     sync: {},
+    statusline: { chain: { type: 'string' } },
     rm: {},
     help: {},
   };
@@ -36,6 +40,18 @@ async function main() {
     return;
   }
   const clock = createClock();
+  if (command === 'statusline') {
+    requireArgs(0, 0);
+    if (values.chain !== undefined && !values.chain.trim()) throw new Error('--chain requires a non-empty command.');
+    const rawInput = fs.readFileSync(0, 'utf8');
+    const { summary } = writeClaudeCodeStatusline(rawInput, { home: clock.home });
+    if (values.chain !== undefined) {
+      process.stdout.write(runStatuslineChain(values.chain, rawInput));
+    } else {
+      console.log(summary);
+    }
+    return;
+  }
   if (command === 'set') {
     requireArgs(3, 3);
     if (values.used !== undefined && !values.used.trim()) throw new Error('--used must be a number between 0 and 100.');

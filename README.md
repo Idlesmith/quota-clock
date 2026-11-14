@@ -40,6 +40,7 @@ npx quota-clock help
 quota-clock set <service> <window> <when> [--used percent] [--note text] [--period minutes]
 quota-clock list [--json]
 quota-clock sync
+quota-clock statusline [--chain <command>]
 quota-clock rm <service> [window]
 quota-clock help
 ```
@@ -123,8 +124,36 @@ The table also shows Used, Source, and Fetched (local time); missing values appe
 JSON entries include `usedPercent` (number or null), `source` (string), and `fetchedAt` (ISO timestamp or null).
 Old records remain readable with unknown usage/time and source `manual`. Percentages are stored snapshots and do not reset automatically when a repeating reset time rolls forward.
 
-`quota-clock sync` runs registered collectors and saves their results. **No built-in collectors are registered yet.** Codex rollout logs also contain conversations, so they are not read under the current privacy constraint. With no collectors, sync reports no records and leaves storage unchanged. Use manual `set --used` until a quota-only source is available. See [data sources](docs/sources.md) for the investigation and collection limits.
-External tools can pass their own collectors to the public API without accessing the CLI:
+`quota-clock sync` runs registered collectors and saves their results. The built-in `claude-code` collector imports its quota-only statusline cache as described below. Codex rollout logs contain conversations and are not read under the current privacy constraint; use `set --used` for Codex. Antigravity has no verified automatic collector. See [data sources](docs/sources.md) for the findings and limits.
+
+### Claude Code `statusLine` integration
+
+Claude Code passes session state JSON via `stdin` to a custom status line command, including `rate_limits.five_hour` and `rate_limits.seven_day` (`used_percentage` and `resets_at`).
+`quota-clock statusline` reads `stdin`, saves **only** `rate_limits` to `<home>/claude-code.json` (never storing conversation paths, transcripts, or credentials), and prints a compact status line summary. Then `quota-clock sync` imports those windows via the built-in `claude-code` collector.
+
+Add to `~/.claude/settings.json` (quota-clock never modifies `settings.json` automatically):
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "quota-clock statusline"
+  }
+}
+```
+
+If you already have a status line script, use `--chain` to forward the original `stdin` JSON to your command and print its output unchanged:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "quota-clock statusline --chain \"~/.claude/my-statusline.sh\""
+  }
+}
+```
+
+External tools can also pass their own collectors to the public API without accessing the CLI:
 
 ```js
 import { collect, createClock } from 'quota-clock';

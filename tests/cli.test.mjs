@@ -159,7 +159,7 @@ test('invalid --used inputs fail without creating data', t => {
   assert.deepEqual(fs.readdirSync(home), []);
 });
 
-test('sync with no registered collectors reports no records and rejects extra args', t => {
+test('sync without cached quotas reports no records and rejects extra args', t => {
   const { home, ok, run } = fixture(t);
   assert.match(ok('help'), /quota-clock sync/);
   assert.match(ok('sync'), /No quota records collected/);

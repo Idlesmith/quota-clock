@@ -18,15 +18,22 @@ test('default collection never opens sessions, credentials or conversation files
   const previous = process.env.CODEX_HOME;
   process.env.CODEX_HOME = home;
   t.after(() => { if (previous === undefined) delete process.env.CODEX_HOME; else process.env.CODEX_HOME = previous; });
-  const clock = createClock({ home: path.join(home, 'output') });
-  // Reject I/O rather than inspecting file contents. Default collection needs none.
+  const output = path.join(home, 'output');
+  const cache = path.join(output, 'claude-code.json');
+  const clock = createClock({ home: output });
+  // The registered Claude collector may check its dedicated cache, never Codex sources.
   const calls = [];
   const forbid = name => (...args) => { calls.push(name); throw new Error(`Unexpected source access: ${name}`); };
   for (const method of ['open', 'readFile', 'readdir', 'stat', 'lstat', 'access']) t.mock.method(fs, method, forbid(method));
-  for (const method of ['openSync', 'readFileSync', 'readdirSync', 'statSync', 'lstatSync', 'existsSync', 'createReadStream']) t.mock.method(fsSync, method, forbid(method));
-  assert.deepEqual(await collect(), []);
+  for (const method of ['openSync', 'readFileSync', 'readdirSync', 'statSync', 'lstatSync', 'createReadStream']) t.mock.method(fsSync, method, forbid(method));
+  t.mock.method(fsSync, 'existsSync', file => {
+    assert.equal(file, cache, 'only the quota-only Claude cache may be checked');
+    calls.push('claude-cache-exists');
+    return false;
+  });
+  assert.deepEqual(await collect({ home: output }), []);
   assert.deepEqual(await clock.sync(), []);
-  assert.deepEqual(calls, []);
+  assert.deepEqual(calls, ['claude-cache-exists', 'claude-cache-exists']);
   t.mock.restoreAll();
   assert.equal(fsSync.existsSync(path.join(home, 'output')), false);
 });
