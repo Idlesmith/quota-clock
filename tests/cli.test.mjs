@@ -159,7 +159,7 @@ test('invalid --used inputs fail without creating data', t => {
   assert.deepEqual(fs.readdirSync(home), []);
 });
 
-test('sync with no detected sessions reports no records and rejects extra args', t => {
+test('sync with no registered collectors reports no records and rejects extra args', t => {
   const { home, ok, run } = fixture(t);
   assert.match(ok('help'), /quota-clock sync/);
   assert.match(ok('sync'), /No quota records collected/);
@@ -172,7 +172,7 @@ test('sync with no detected sessions reports no records and rejects extra args',
   }
 });
 
-test('CLI sync reads synthetic Codex sessions and exposes usage metadata', t => {
+test('CLI sync does not ingest synthetic Codex conversation logs', t => {
   const { home, ok, list } = fixture(t);
   const directory = path.join(home, 'codex', 'sessions', '2026', '11', '14');
   fs.mkdirSync(directory, { recursive: true });
@@ -181,9 +181,7 @@ test('CLI sync reads synthetic Codex sessions and exposes usage metadata', t => 
     secondary: { used_percent: 75, window_minutes: 10080, resets_at: 1794668400 },
   } } };
   fs.writeFileSync(path.join(directory, 'rollout-fixture.jsonl'), JSON.stringify(event) + '\n');
-  assert.match(ok('sync'), /Synced 2 quota window/);
-  assert.equal(list().length, 2);
-  assert.ok(list().every(row => row.service === 'codex' && row.source === 'codex-session'));
-  assert.deepEqual(list().map(row => row.usedPercent).sort((a, b) => a - b), [25, 75]);
-  assert.match(ok('list'), /codex-session/);
+  assert.match(ok('sync'), /No quota records collected/);
+  assert.deepEqual(list(), []);
+  assert.equal(fs.existsSync(path.join(home, 'data.json')), false);
 });

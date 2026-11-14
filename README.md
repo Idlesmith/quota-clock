@@ -123,7 +123,7 @@ The table also shows Used, Source, and Fetched (local time); missing values appe
 JSON entries include `usedPercent` (number or null), `source` (string), and `fetchedAt` (ISO timestamp or null).
 Old records remain readable with unknown usage/time and source `manual`. Percentages are stored snapshots and do not reset automatically when a repeating reset time rolls forward.
 
-`quota-clock sync` runs registered collectors and saves their results. The built-in `codex-session` collector reads quota snapshots from `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl` (at most the final 256 KiB per file). Missing sessions produce no records and leave storage unchanged. See [data sources](docs/sources.md) for freshness, privacy, and other service availability.
+`quota-clock sync` runs registered collectors and saves their results. **No built-in collectors are registered yet.** Codex rollout logs also contain conversations, so they are not read under the current privacy constraint. With no collectors, sync reports no records and leaves storage unchanged. Use manual `set --used` until a quota-only source is available. See [data sources](docs/sources.md) for the investigation and collection limits.
 External tools can pass their own collectors to the public API without accessing the CLI:
 
 ```js

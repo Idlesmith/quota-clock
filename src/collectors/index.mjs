@@ -1,6 +1,6 @@
-import { codexCollector } from './codex.mjs';
+// Only register sources that contain quota data without conversation or credentials.
 // A collector is an async function, or { name, collect }, returning quota records.
-export const collectors = Object.freeze([codexCollector]);
+export const collectors = Object.freeze([]);
 
 export async function collect({ collectors: selected = collectors, now = new Date() } = {}) {
   if (!Array.isArray(selected)) throw new Error('collectors must be an array.');
