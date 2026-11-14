@@ -194,6 +194,10 @@ A collector is a function or an object with a `collect({ now: Date })` method, r
 `clock.sync` also accepts a records array directly. It validates the entire batch before one save; collection/validation errors propagate without partial updates. Unrelated windows remain unchanged.
 `clock.set` accepts these same metadata options: usage defaults to null, source to `manual`, and fetchedAt to the clock time. Explicit null fetchedAt means unknown. New fields are additive within storage version 1.
 
+## How this project was built
+
+quota-clock was planned, implemented and reviewed by several AI assistants (Claude, Codex, Gemini/Antigravity) working together through [IdleShift](https://github.com/Idlesmith/idleShift), a local blackboard that hands out tasks, isolates each task in its own git worktree and has a different AI review every change. A human approved permissions and merges. IdleShift also bundles quota-clock's collectors to show each AI's remaining usage.
+
 ## License
 
 MIT

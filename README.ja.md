@@ -195,6 +195,10 @@ collector は関数、または `collect({ now: Date })` メソッドを持つ�
 `clock.sync` は結果配列を直接渡す形にも対応します。全件を検証後、一度だけ保存します。取得・検証エラーは呼び出し元に返し、途中までの更新を保存しません。他の枠は保持します。
 `clock.set` にも同じメタデータを指定でき、省略時は使用率 null・取得元 `manual`・取得時刻は clock の現在時刻になります。fetchedAt の明示的な null は不明を表します。保存形式の version は 1 のまま、項目を追加しています。
 
+## このプロジェクトの作られ方
+
+quota-clock は、複数の AI（Claude、Codex、Gemini/Antigravity）が [IdleShift](https://github.com/Idlesmith/idleShift) を通じて分担し、計画・実装・レビューして作りました。IdleShift はタスクを配り、タスクごとに git worktree で作業場所を分け、すべての変更を別の AI にレビューさせるローカルの黒板です。人は権限の承認とマージだけを行いました。IdleShift 自身も quota-clock の取り込み処理を同梱し、各 AI の残り使用量の表示に使っています。
+
 ## ライセンス
 
 MIT
