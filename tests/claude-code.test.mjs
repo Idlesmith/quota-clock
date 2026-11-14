@@ -94,7 +94,7 @@ test('claudeCodeCollector and clock.sync import saved claude-code.json records',
   });
 
   const clock = createClock({ home, now: () => baseNow });
-  const synced = await clock.sync();
+  const synced = await clock.sync({ collectors: [claudeCodeCollector] });
   assert.equal(synced.length, 2);
   const listed = clock.list();
   assert.equal(listed.length, 2);
@@ -120,7 +120,7 @@ test('statusline without rate_limits does not overwrite existing claude-code.jso
 
 test('CLI statusline and --chain forward stdin and allow CLI sync', t => {
   const home = makeTempHome(t);
-  const env = { ...process.env, QUOTA_CLOCK_HOME: home };
+  const env = { ...process.env, QUOTA_CLOCK_HOME: home, CODEX_HOME: path.join(home, 'missing-codex') };
 
   // 1. Direct statusline invocation
   const direct = spawnSync(process.execPath, [cli, 'statusline'], {

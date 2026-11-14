@@ -172,7 +172,7 @@ test('sync without cached quotas reports no records and rejects extra args', t =
   }
 });
 
-test('CLI sync does not ingest synthetic Codex conversation logs', t => {
+test('CLI sync imports synthetic Codex quota windows', t => {
   const { home, ok, list } = fixture(t);
   const directory = path.join(home, 'codex', 'sessions', '2026', '11', '14');
   fs.mkdirSync(directory, { recursive: true });
@@ -181,7 +181,9 @@ test('CLI sync does not ingest synthetic Codex conversation logs', t => {
     secondary: { used_percent: 75, window_minutes: 10080, resets_at: 1794668400 },
   } } };
   fs.writeFileSync(path.join(directory, 'rollout-fixture.jsonl'), JSON.stringify(event) + '\n');
-  assert.match(ok('sync'), /No quota records collected/);
-  assert.deepEqual(list(), []);
-  assert.equal(fs.existsSync(path.join(home, 'data.json')), false);
+  assert.match(ok('sync'), /Synced 2 quota window/);
+  assert.equal(list().length, 2);
+  assert.deepEqual(list().map(row => row.window).sort(), ['5h', 'weekly']);
+  assert.ok(list().every(row => row.service === 'codex' && row.source === 'codex-session'));
+  assert.equal(fs.existsSync(path.join(home, 'data.json')), true);
 });

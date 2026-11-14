@@ -1,56 +1,47 @@
 # Quota data sources
 
-Local-source investigation: 2026-11-14 (IdleShift task T-360). These are reported findings from the investigated installations, not vendor-supported API contracts. This implementation task used synthetic fixtures only and did not inspect actual sessions, credentials, or conversation content.
+The built-in collectors are `codex-session` and `claude-code`. Local-source investigation was recorded in IdleShift T-360 on 2026-11-14. Collector tests use synthetic fixtures, not real conversation content.
 
-**The built-in `claude-code` collector imports its quota-only statusline cache.** Manual usage tracking and the external collection API are also available. Codex's identified on-disk source contains conversations, so reading it would violate the current requirement not to read conversation bodies. A bounded tail and discarding unrelated fields after reading do not satisfy that requirement.
-
-| Application | Reported source / location | Current approach | Reliability / limits |
+| Application | Source | Current behavior | Limits |
 | --- | --- | --- | --- |
-| Codex | `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl` contains `token_count` quota snapshots alongside conversations | Manual `set --used`; rollout files are not read | Usage metadata exists, but it is not isolated from conversations. A quota-only export is needed for automatic collection. |
-| Claude desktop | No usable quota cache found in the investigated app-data directories | Manual entry or an app/AI reporting its own usage | The investigation reported an in-app `get_usage` capability returning `percentUsed` and `resetsAt`; it is not a standalone local-file source. |
-| Claude Code | Explicit statusline export in `<home>/claude-code.json` | Built-in `claude-code` collector after user statusline setup | `five_hour` and `seven_day` quota snapshots; freshness depends on statusline updates. No transcript files are opened. |
-| Antigravity | No numeric usage snapshot found in the investigated local files | Manual `set --used` | State keys mentioning quota refresh are not usage values. |
+| Codex | ${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl | Reads bounded conversation-file tails and retains only quota snapshots | The buffer can contain conversation bytes. Snapshots may be stale or span accounts. |
+| Claude Code | Explicit statusline export in `<home>/claude-code.json` | Imports the dedicated quota cache | Requires user statusline setup; freshness depends on updates. |
+| Claude desktop | No usable quota cache found in the investigated app-data directories | Manual entry or app/AI self-report | In-app usage capability is not exposed as a local-file collector here. |
+| Antigravity | Public CLI / ACP / statusline candidates investigated below | Manual entry | No validated automatic collector in this version. |
 
-## Codex: identified format, unavailable under the privacy constraint
+## Codex selection and privacy boundary
 
-T-360 reported quota fields in the `rate_limits` object of `token_count` events:
+`codex-session` uses non-empty `CODEX_HOME`, otherwise `~/.codex`. The source home is independent of `QUOTA_CLOCK_HOME` / the clock's storage `home`. Direct library users can supply `codexCollector.collect({ codexHome })` using the exported collector for a synthetic or alternate source.
 
-| Reported field | Potential mapping in a future quota-only source |
+The collector enumerates date-shaped session directories and regular `rollout-*.jsonl` files, skipping nested file/directory symlinks. It tries files in descending modification-time order, reads at most the final **256 KiB per file**, discards a partial first line, and scans backwards for the last usable `event_msg` / `token_count` quota snapshot. Files with no usable snapshot are skipped. It does not merge different snapshots and does not scan `archived_sessions`.
+
+**These are conversation-record files. Reading their tails brings conversation bytes into the process buffer.** Filtering occurs after that read. Only the quota fields below are returned or persisted; raw lines, conversation text, cwd/workspace paths, session/account IDs, token totals, credits, and unrelated payload fields are discarded. The collector never opens `auth.json`, credential stores, or other application files and makes no network requests. It does not send prompts or consume model tokens.
+
+| Input | Output |
 | --- | --- |
-| `primary.used_percent` / `secondary.used_percent` | `usedPercent` (0–100) |
-| `window_minutes` | `periodMinutes`; 300 -> window `5h`, 10080 -> `weekly`, otherwise `<n>m` |
-| `resets_at` (Unix epoch seconds) | `resetAt` (ISO timestamp) |
-| Event `timestamp` | `fetchedAt` (the observation time, not import time) |
+| primary / secondary used_percent | usedPercent (finite 0–100) |
+| window_minutes | periodMinutes; 300 -> window 5h, 10080 -> weekly, otherwise `<n>m` |
+| resets_at (Unix epoch seconds) | resetAt (ISO timestamp) |
+| Event timestamp | fetchedAt (original observation time, not sync time) |
+| Collector identity | service codex, source codex-session |
 
-The same rollout files contain conversation records. A proposed implementation read the final 256 KiB and selected quota events; privacy review rejected it because the file read itself brought unrelated conversation bytes into memory. That reader and its default registration have been removed. The program does not enumerate or open Codex sessions or `auth.json`, even when `CODEX_HOME` is set and session files exist.
+Malformed or partial lines and invalid quota entries are skipped. Missing sessions return no records and do not delete saved windows. Other I/O errors propagate. An event outside the tail limit is not found; the collector does not read the full history to recover it. The reader was previously removed during review under a strict prohibition on reading conversation bytes; this implementation restores the explicitly bounded extraction approach and documents its actual read boundary.
 
-No alternative quota-only Codex source was established by the investigation. This task does not change the privacy constraint or enable collection through transcripts, credentials, or network requests. A future integration must receive a quota-only export from an authorized producer, rather than extracting it from mixed conversation files. Until then, Codex has no automatic collector. If registered collectors find no quota records, `sync` leaves saved entries unchanged.
-
-## Claude and Antigravity findings
-
-The Claude desktop investigation checked `%APPDATA%/Claude` and `%LOCALAPPDATA%/Packages/Claude_*/LocalCache/Roaming/Claude` and reported no usable on-disk usage snapshot. Claude Code's `~/.claude` files supplied no dedicated usage cache. A conversation recording an app's usage response is still a conversation, not an approved collector source.
-
-Reading OAuth tokens to query a private usage API was rejected because credentials are outside the collection boundary. The existing Claude Code integration instead receives statusline stdin and saves only the quota fields into a dedicated cache. See the integration details below.
-
-For Antigravity, the investigation reported quota-related keys in `~/.gemini/antigravity/antigravity_state.pbtxt` but no numeric snapshot, and no usage percentages in `antigravity-cli/cli.log`. Those files are not parsed by quota-clock.
-
-## Available fallback and freshness
-
-Record the numbers and reset time shown by the app manually:
-
-```bash
-quota-clock set codex 5h 155m --used 42 --note "reported by app"
-quota-clock set claude weekly 3d --used 80
-quota-clock set antigravity weekly 3d --used 60
-```
-
-These are synthetic examples. `set` records source `manual` and the entry time as `fetchedAt`. Usage remains a snapshot even if `list` rolls a periodic reset time forward; a new reset does not automatically make an old percentage current.
-
-External tools may use the public `collect({ collectors })` and `clock.sync({ records })` interfaces with explicitly supplied quota-only data. The examples do not enable additional source readers.
+Modification time chooses which file to try first; it does not prove that its quota snapshot is newer than every event in every file. Account switching can make a source directory ambiguous because the collector does not read credentials or identify the authenticated account. Percentages remain snapshots when periodic reset times roll forward: compare fetchedAt with the present before relying on them.
 
 ## Claude Code statusline integration
 
-The existing `quota-clock statusline` command accepts the app-provided JSON and writes only `rate_limits.five_hour` / `rate_limits.seven_day` and an observation timestamp to `<home>/claude-code.json`. The built-in `claude-code` collector imports this cache during `sync`; it does not read transcript paths, authentication stores, or `~/.claude` session logs. See the [README setup instructions](../README.md#claude-code-statusline-integration) and the [official statusline documentation](https://code.claude.com/docs/en/statusline). Optional `--chain` forwards the original stdin to a user-chosen command, so that command also receives the original metadata; the quota cache itself contains only extracted limits. This integration was already present on main and is preserved by the merge.
+`quota-clock statusline` receives the app-provided stdin JSON and writes only `rate_limits.five_hour` / `rate_limits.seven_day` and fetchedAt to `<home>/claude-code.json`. The built-in collector imports this cache during sync. It does not open transcript paths or authentication stores. See the [README setup](../README.md#claude-code-statusline-integration) and [official statusline documentation](https://code.claude.com/docs/en/statusline). Optional --chain forwards the original stdin to a user-chosen command, which therefore receives the original metadata; only extracted limits enter the quota cache.
+
+## Other local-source findings
+
+T-360 reported no usable usage cache in %APPDATA%/Claude or %LOCALAPPDATA%/Packages/Claude_*/LocalCache/Roaming/Claude. An in-app get_usage capability was reported, but no standalone local-file collector is provided for it. Reading OAuth tokens to query a private endpoint is excluded because it requires credentials. The investigation reported quota-related Antigravity state keys without numeric usage; those files are not parsed. Later public-interface research follows below.
+
+Manual fallback (synthetic example):
+
+```bash
+quota-clock set codex 5h 155m --used 42 --note "reported by app"
+```
 
 ## Antigravity CLI investigation
 

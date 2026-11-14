@@ -124,7 +124,7 @@ clock.remove('claude');
 JSON の追加項目は `usedPercent`（数値または null）・`source`（文字列）・`fetchedAt`（ISO 日時または null）です。
 旧データは使用率・取得時刻が不明、取得元は `manual` として読み込めます。使用率は取得時点の記録のため、周期枠のリセット時刻が繰り上がっても自動でゼロにはなりません。
 
-`quota-clock sync` は登録された collector を実行して結果を保存します。組み込みの `claude-code` collector は、以下の手順で作成した使用枠だけの statusline キャッシュを取り込みます。Codex の rollout ログは会話本文も含むため、現在のプライバシー条件では読み取りません。Codex は `set --used` で手入力してください。Antigravity の自動取得経路は未検証です。詳細は [取得元メモ（英語）](docs/sources.md) を参照してください。
+`quota-clock sync` は組み込みの `codex-session` と `claude-code` を実行します。Codex は `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl` にある会話記録ファイルの末尾 256 KiB までを読みます。読み込む末尾には会話本文のバイトも含まれますが、取り出して返す・保存するのは使用量の項目だけです。生の行・会話本文・作業フォルダのパス・認証情報は出力・保存しません。Claude Code は以下の手順で作成した使用枠だけの statusline キャッシュを取り込みます。Antigravity の自動取得経路は未検証です。取得順序・鮮度・制約は [取得元メモ（英語）](docs/sources.md) を参照してください。
 
 ### Claude Code `statusLine` 連携
 

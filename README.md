@@ -124,7 +124,7 @@ The table also shows Used, Source, and Fetched (local time); missing values appe
 JSON entries include `usedPercent` (number or null), `source` (string), and `fetchedAt` (ISO timestamp or null).
 Old records remain readable with unknown usage/time and source `manual`. Percentages are stored snapshots and do not reset automatically when a repeating reset time rolls forward.
 
-`quota-clock sync` runs registered collectors and saves their results. The built-in `claude-code` collector imports its quota-only statusline cache as described below. Codex rollout logs contain conversations and are not read under the current privacy constraint; use `set --used` for Codex. Antigravity has no verified automatic collector. See [data sources](docs/sources.md) for the findings and limits.
+`quota-clock sync` runs both built-in collectors: `codex-session` reads the final 256 KiB of Codex conversation-record files, while `claude-code` imports its quota-only statusline cache as described below. The Codex file tails can contain conversation bytes, but only quota fields are returned or saved; raw lines, conversation text, workspace paths, and credentials are never output or persisted. Codex source files are found under `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl`. Antigravity has no verified automatic collector. See [data sources](docs/sources.md) for selection rules, freshness, and limits.
 
 ### Claude Code `statusLine` integration
 

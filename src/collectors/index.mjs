@@ -1,10 +1,11 @@
+import { codexCollector } from './codex.mjs';
 import { claudeCodeCollector } from './claude-code.mjs';
 
-export { claudeCodeCollector };
+export { claudeCodeCollector, codexCollector };
 
 // Built-in collector functions.
 // A collector is an async function, or { name, collect }, returning quota records.
-export const collectors = Object.freeze([claudeCodeCollector]);
+export const collectors = Object.freeze([codexCollector, claudeCodeCollector]);
 
 export async function collect({ collectors: selected = collectors, now = new Date(), home } = {}) {
   if (!Array.isArray(selected)) throw new Error('collectors must be an array.');
