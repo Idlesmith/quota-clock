@@ -1,6 +1,6 @@
-// Add built-in collector functions here once their sources are implemented.
+import { codexCollector } from './codex.mjs';
 // A collector is an async function, or { name, collect }, returning quota records.
-export const collectors = Object.freeze([]);
+export const collectors = Object.freeze([codexCollector]);
 
 export async function collect({ collectors: selected = collectors, now = new Date() } = {}) {
   if (!Array.isArray(selected)) throw new Error('collectors must be an array.');

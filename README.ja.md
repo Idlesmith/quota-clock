@@ -123,7 +123,7 @@ clock.remove('claude');
 JSON の追加項目は `usedPercent`（数値または null）・`source`（文字列）・`fetchedAt`（ISO 日時または null）です。
 旧データは使用率・取得時刻が不明、取得元は `manual` として読み込めます。使用率は取得時点の記録のため、周期枠のリセット時刻が繰り上がっても自動でゼロにはなりません。
 
-`quota-clock sync` は登録した collector を実行して結果を保存します。**組み込み collector はまだ未登録です**。現時点では取得データなしと表示し、保存先を変更しません。
+`quota-clock sync` は登録した collector を実行して結果を保存します。組み込みの `codex-session` は `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl` の使用枠を取得します（各ファイルの末尾 256 KiB まで）。セッションが見つからない場合は取得データなしと表示し、保存先を変更しません。鮮度・プライバシー・他サービスの取得可否は [取得元メモ（英語）](docs/sources.md) を参照してください。
 外部ツールからは公開 API を利用できます：
 
 ```js

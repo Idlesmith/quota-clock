@@ -76,7 +76,7 @@ test('collect supports async functions and named objects without mutating record
   assert.equal(now.getUTCFullYear(), 2026);
   const anonymous = await collect({ collectors: [() => [record({ source: undefined })]], now });
   assert.equal(anonymous[0].source, 'collector');
-  assert.deepEqual(await collect(), []);
+  assert.deepEqual(await collect({ collectors: [] }), []);
 });
 
 test('sync imports batches once and updates only matching windows', async t => {
@@ -115,7 +115,7 @@ test('failed collection or validation leaves the entire stored batch unchanged',
 
 test('empty sync does not create storage and invalid collectors reject clearly', async t => {
   const { clock, file } = fixture(t);
-  assert.deepEqual(await clock.sync(), []);
+  assert.deepEqual(await clock.sync({ collectors: [] }), []);
   assert.equal(fs.existsSync(file), false);
   for (const collectors of [{}, [null], [() => null], [() => [null]]]) {
     await assert.rejects(collect({ collectors }), /array|function|record/);

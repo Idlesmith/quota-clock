@@ -11,7 +11,7 @@ function fixture(t) {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'quota-clock-cli-'));
   t.after(() => fs.rmSync(home, { recursive: true, force: true }));
   const run = (...args) => spawnSync(process.execPath, [cli, ...args], {
-    encoding: 'utf8', env: { ...process.env, QUOTA_CLOCK_HOME: home, TZ: 'Asia/Tokyo' },
+    encoding: 'utf8', env: { ...process.env, QUOTA_CLOCK_HOME: home, CODEX_HOME: path.join(home, 'codex'), TZ: 'Asia/Tokyo' },
   });
   const ok = (...args) => {
     const result = run(...args);
@@ -159,7 +159,7 @@ test('invalid --used inputs fail without creating data', t => {
   assert.deepEqual(fs.readdirSync(home), []);
 });
 
-test('sync with no registered collectors reports no records and rejects extra args', t => {
+test('sync with no detected sessions reports no records and rejects extra args', t => {
   const { home, ok, run } = fixture(t);
   assert.match(ok('help'), /quota-clock sync/);
   assert.match(ok('sync'), /No quota records collected/);
@@ -170,4 +170,20 @@ test('sync with no registered collectors reports no records and rejects extra ar
     assert.equal(result.stdout, '');
     assert.match(result.stderr, /quota-clock:/);
   }
+});
+
+test('CLI sync reads synthetic Codex sessions and exposes usage metadata', t => {
+  const { home, ok, list } = fixture(t);
+  const directory = path.join(home, 'codex', 'sessions', '2026', '11', '14');
+  fs.mkdirSync(directory, { recursive: true });
+  const event = { timestamp: '2026-11-14T13:00:00Z', type: 'event_msg', payload: { type: 'token_count', rate_limits: {
+    primary: { used_percent: 25, window_minutes: 300, resets_at: 1794664800 },
+    secondary: { used_percent: 75, window_minutes: 10080, resets_at: 1794668400 },
+  } } };
+  fs.writeFileSync(path.join(directory, 'rollout-fixture.jsonl'), JSON.stringify(event) + '\n');
+  assert.match(ok('sync'), /Synced 2 quota window/);
+  assert.equal(list().length, 2);
+  assert.ok(list().every(row => row.service === 'codex' && row.source === 'codex-session'));
+  assert.deepEqual(list().map(row => row.usedPercent).sort((a, b) => a - b), [25, 75]);
+  assert.match(ok('list'), /codex-session/);
 });
