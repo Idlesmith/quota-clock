@@ -1,8 +1,8 @@
 import { parseWhen, nextReset, formatRemaining } from './time.mjs';
 import { defaultHome, load, save, DEFAULT_PERIODS } from './store.mjs';
-import { collect, collectors, claudeCodeCollector, codexCollector } from './collectors/index.mjs';
+import { collect, collectors, claudeCodeCollector, codexCollector, antigravityCollector } from './collectors/index.mjs';
 
-export { parseWhen, nextReset, formatRemaining, defaultHome, DEFAULT_PERIODS, collect, collectors, claudeCodeCollector, codexCollector };
+export { parseWhen, nextReset, formatRemaining, defaultHome, DEFAULT_PERIODS, collect, collectors, claudeCodeCollector, codexCollector, antigravityCollector };
 
 const name = (value, what) => {
   const result = String(value ?? '').trim();

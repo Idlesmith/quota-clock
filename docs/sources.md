@@ -1,13 +1,13 @@
 # Quota data sources
 
-The built-in collectors are `codex-session` and `claude-code`. Local-source investigation was recorded in IdleShift T-360 on 2026-11-14. Collector tests use synthetic fixtures, not real conversation content.
+The built-in collectors are `codex-session`, `claude-code`, and the opt-in cache importer `antigravity-statusline`. Local-source investigation was recorded in IdleShift T-360 on 2026-11-14. Collector tests use synthetic fixtures, not real conversation content.
 
 | Application | Source | Current behavior | Limits |
 | --- | --- | --- | --- |
 | Codex | ${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl | Reads bounded conversation-file tails and retains only quota snapshots | The buffer can contain conversation bytes. Snapshots may be stale or span accounts. |
 | Claude Code | Explicit statusline export in `<home>/claude-code.json` | Imports the dedicated quota cache | Requires user statusline setup; freshness depends on updates. |
 | Claude desktop | No usable quota cache found in the investigated app-data directories | Manual entry or app/AI self-report | In-app usage capability is not exposed as a local-file collector here. |
-| Antigravity | Public CLI / ACP / statusline candidates investigated below | Manual entry | No validated automatic collector in this version. |
+| Antigravity | Explicit statusline export in `<home>/antigravity.json` | Passive `antigravity-statusline` cache import after user setup | Synthetic-tested; live app payload compatibility unverified. No app/model launch. |
 
 ## Codex selection and privacy boundary
 
@@ -43,7 +43,15 @@ Manual fallback (synthetic example):
 quota-clock set codex 5h 155m --used 42 --note "reported by app"
 ```
 
-## Antigravity CLI investigation
+## Antigravity statusline integration (T-372)
+
+The optional `quota-clock statusline --source antigravity` command receives the full app-provided stdin JSON, then retains only validated quota fields plus a capture timestamp in `<home>/antigravity.json`. Conversation title, email, transcript path, and other surrounding metadata are discarded rather than written to files or logs. No transcript path is opened. See the [README configuration](../README.md#antigravity-statusline-integration) and [official statusline schema](https://antigravity.google/docs/cli/statusline/). Explicit --chain forwards the original full input to the user's command; that command is outside the cache filter.
+
+The importer preserves bucket IDs as windows, sets periodMinutes to null, and computes usedPercent only from a finite remaining_fraction in [0,1]. remaining_amount does not establish a percentage. reset_time takes precedence; otherwise a non-negative numeric reset_in_seconds is resolved once at capture time. Disabled buckets are omitted from sync, missing reset values cannot form clock records, and missing/invalid quota input does not overwrite the cache. Sync does not delete previously imported windows that later disappear or become disabled.
+
+Only the dedicated cache is read. No agy process, prompt, private API, credential file, app setting change, or live payload capture is part of this integration. The implementation is covered by synthetic tests, while installed-app behavior remains unverified. Historical T-371 findings below describe the earlier research before this opt-in importer was added; its standalone print-mode prohibition remains in effect.
+
+## Antigravity CLI investigation (historical T-371)
 
 Investigated 2026-11-14 for IdleShift T-371, using the installed `agy` 1.5.0 on Windows. This is a constrained research result, **not an implemented Antigravity collector**. No model turn, authentication request, session creation, quota request, credential-file read, conversation read, or package installation was performed in this task.
 

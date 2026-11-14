@@ -1,11 +1,12 @@
+import { antigravityCollector } from './antigravity.mjs';
 import { codexCollector } from './codex.mjs';
 import { claudeCodeCollector } from './claude-code.mjs';
 
-export { claudeCodeCollector, codexCollector };
+export { claudeCodeCollector, codexCollector, antigravityCollector };
 
 // Built-in collector functions.
 // A collector is an async function, or { name, collect }, returning quota records.
-export const collectors = Object.freeze([codexCollector, claudeCodeCollector]);
+export const collectors = Object.freeze([codexCollector, claudeCodeCollector, antigravityCollector]);
 
 export async function collect({ collectors: selected = collectors, now = new Date(), home } = {}) {
   if (!Array.isArray(selected)) throw new Error('collectors must be an array.');
