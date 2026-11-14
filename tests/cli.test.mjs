@@ -128,3 +128,46 @@ test('corrupt storage reports an error and is preserved', t => {
     assert.equal(fs.readFileSync(file, 'utf8'), '{ broken');
   }
 });
+
+test('--used is persisted and shown with source and collection time', t => {
+  const { ok, list } = fixture(t);
+  ok('set', 'demo', '5h', '1h', '--used', '42.5');
+  const row = list()[0];
+  assert.equal(row.usedPercent, 42.5);
+  assert.equal(row.source, 'manual');
+  assert.ok(Number.isFinite(Date.parse(row.fetchedAt)));
+  const output = ok('list');
+  assert.match(output, /Used\s+Source\s+Fetched \(local\)/);
+  assert.match(output, /42\.5%\s+manual/);
+  ok('set', 'demo', '5h', '1h', '--used', '0');
+  assert.match(ok('list'), /0%\s+manual/);
+  ok('set', 'demo', '5h', '1h', '--used', '100');
+  assert.equal(list()[0].usedPercent, 100);
+  ok('set', 'demo', '5h', '1h');
+  assert.equal(list()[0].usedPercent, null);
+  assert.match(ok('list'), /-\s+manual/);
+});
+
+test('invalid --used inputs fail without creating data', t => {
+  const { home, run } = fixture(t);
+  for (const value of ['-1', '101', 'NaN', 'Infinity', 'forty', '', ' ']) {
+    const result = run('set', 'demo', '5h', '1h', '--used', value);
+    assert.equal(result.status, 1, value);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /used|--used/);
+  }
+  assert.deepEqual(fs.readdirSync(home), []);
+});
+
+test('sync with no registered collectors reports no records and rejects extra args', t => {
+  const { home, ok, run } = fixture(t);
+  assert.match(ok('help'), /quota-clock sync/);
+  assert.match(ok('sync'), /No quota records collected/);
+  assert.deepEqual(fs.readdirSync(home), []);
+  for (const args of [['sync', 'extra'], ['sync', '--used', '42']]) {
+    const result = run(...args);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, '');
+    assert.match(result.stderr, /quota-clock:/);
+  }
+});

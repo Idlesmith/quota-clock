@@ -37,8 +37,9 @@ npx quota-clock help
 ## CLI Usage
 
 ```text
-quota-clock set <service> <window> <when> [--note text] [--period minutes]
+quota-clock set <service> <window> <when> [--used percent] [--note text] [--period minutes]
 quota-clock list [--json]
+quota-clock sync
 quota-clock rm <service> [window]
 quota-clock help
 ```
@@ -113,6 +114,39 @@ const entries = clock.list();
 clock.remove('claude', '5h');
 clock.remove('claude');
 ```
+
+## Usage metadata and collection API
+
+Record a manual usage percentage with `quota-clock set claude 5h 155m --used 42.5`.
+`--used` accepts 0 through 100, including fractions. Omit it for unknown usage.
+The table also shows Used, Source, and Fetched (local time); missing values appear as `-`.
+JSON entries include `usedPercent` (number or null), `source` (string), and `fetchedAt` (ISO timestamp or null).
+Old records remain readable with unknown usage/time and source `manual`. Percentages are stored snapshots and do not reset automatically when a repeating reset time rolls forward.
+
+`quota-clock sync` runs registered collectors and saves their results. **No built-in collectors are registered yet**; for now it reports that no records were collected and leaves storage unchanged.
+External tools can pass their own collectors to the public API without accessing the CLI:
+
+```js
+import { collect, createClock } from 'quota-clock';
+
+const demo = {
+  name: 'demo',
+  async collect({ now }) {
+    // Synthetic example; replace with a quota-only source.
+    return [{ service: 'demo', window: '5h',
+      resetAt: new Date(now.getTime() + 60 * 60_000).toISOString(),
+      usedPercent: 42, note: 'example' }];
+  },
+};
+const records = await collect({ collectors: [demo] });
+await createClock().sync({ records });
+// Or: await createClock().sync({ collectors: [demo] });
+```
+
+A collector is a function or an object with a `collect({ now: Date })` method, returning an array (or promise of an array) of `{ service, window, resetAt, periodMinutes?, usedPercent?, source?, fetchedAt?, note? }`.
+`collect({ collectors, now })` defaults source to the collector name and fetchedAt to the collection time; `now` may be a date or function returning a date.
+`clock.sync` also accepts a records array directly. It validates the entire batch before one save; collection/validation errors propagate without partial updates. Unrelated windows remain unchanged.
+`clock.set` accepts these same metadata options: usage defaults to null, source to `manual`, and fetchedAt to the clock time. Explicit null fetchedAt means unknown. New fields are additive within storage version 1.
 
 ## License
 

@@ -37,8 +37,9 @@ npx quota-clock help
 ## CLI の使い方
 
 ```text
-quota-clock set <service> <window> <when> [--note text] [--period minutes]
+quota-clock set <service> <window> <when> [--used percent] [--note text] [--period minutes]
 quota-clock list [--json]
+quota-clock sync
 quota-clock rm <service> [window]
 quota-clock help
 ```
@@ -113,6 +114,40 @@ const entries = clock.list();
 clock.remove('claude', '5h');
 clock.remove('claude');
 ```
+
+## 使用率と収集 API
+
+`quota-clock set claude 5h 155m --used 42.5` で使用率を手動記録できます。
+`--used` は小数を含む 0〜100 に対応し、省略すると使用率は不明になります。
+表には Used・Source・Fetched（ローカル時刻）も表示し、不明な値は `-` で表します。
+JSON の追加項目は `usedPercent`（数値または null）・`source`（文字列）・`fetchedAt`（ISO 日時または null）です。
+旧データは使用率・取得時刻が不明、取得元は `manual` として読み込めます。使用率は取得時点の記録のため、周期枠のリセット時刻が繰り上がっても自動でゼロにはなりません。
+
+`quota-clock sync` は登録した collector を実行して結果を保存します。**組み込み collector はまだ未登録です**。現時点では取得データなしと表示し、保存先を変更しません。
+外部ツールからは公開 API を利用できます：
+
+```js
+import { collect, createClock } from 'quota-clock';
+
+const demo = {
+  name: 'demo',
+  async collect({ now }) {
+    // テスト用の架空データ。使用枠だけを取得する処理に置き換えます。
+    return [{ service: 'demo', window: '5h',
+      resetAt: new Date(now.getTime() + 60 * 60_000).toISOString(),
+      usedPercent: 42, note: 'example' }];
+  },
+};
+const records = await collect({ collectors: [demo] });
+await createClock().sync({ records });
+// または await createClock().sync({ collectors: [demo] });
+```
+
+collector は関数、または `collect({ now: Date })` メソッドを持つオブジェクトです。
+戻り値は `{ service, window, resetAt, periodMinutes?, usedPercent?, source?, fetchedAt?, note? }` の配列（またはその Promise）です。
+`collect({ collectors, now })` は省略された source を collector 名、fetchedAt を取得時刻で補います。now は日時または日時を返す関数です。
+`clock.sync` は結果配列を直接渡す形にも対応します。全件を検証後、一度だけ保存します。取得・検証エラーは呼び出し元に返し、途中までの更新を保存しません。他の枠は保持します。
+`clock.set` にも同じメタデータを指定でき、省略時は使用率 null・取得元 `manual`・取得時刻は clock の現在時刻になります。fetchedAt の明示的な null は不明を表します。保存形式の version は 1 のまま、項目を追加しています。
 
 ## ライセンス
 
