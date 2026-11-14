@@ -1,0 +1,17 @@
+{
+  "name": "quota-clock",
+  "version": "0.1.0",
+  "description": "Track AI service quota reset times (5-hour and weekly windows) from the command line or Node.js.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "quota-clock": "bin/quota-clock.mjs"
+  },
+  "exports": "./src/index.mjs",
+  "scripts": {
+    "test": "node --test tests/"
+  },
+  "license": "MIT"
+}
