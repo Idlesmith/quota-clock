@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { collect, createClock, collectors, codexCollector, claudeCodeCollector } from '../src/index.mjs';
+import { collect, createClock, collectors, codexCollector, claudeCodeCollector, antigravityCollector } from '../src/index.mjs';
 
-test('both collectors are registered and only quota fields leave the Codex reader', async t => {
-  assert.deepEqual(collectors, [codexCollector, claudeCodeCollector]);
+test('built-in collectors are registered and only quota fields leave the Codex reader', async t => {
+  assert.deepEqual(collectors, [codexCollector, claudeCodeCollector, antigravityCollector]);
   const home = await fs.mkdtemp(path.join(os.tmpdir(), 'quota-clock-privacy-'));
   t.after(() => fs.rm(home, { recursive: true, force: true }));
   const directory = path.join(home, 'sessions', '2026', '11', '14');

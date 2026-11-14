@@ -40,7 +40,7 @@ npx quota-clock help
 quota-clock set <service> <window> <when> [--used percent] [--note text] [--period minutes]
 quota-clock list [--json]
 quota-clock sync
-quota-clock statusline [--chain <command>]
+quota-clock statusline [--source claude-code|antigravity] [--chain <command>]
 quota-clock rm <service> [window]
 quota-clock help
 ```
@@ -124,7 +124,7 @@ clock.remove('claude');
 JSON の追加項目は `usedPercent`（数値または null）・`source`（文字列）・`fetchedAt`（ISO 日時または null）です。
 旧データは使用率・取得時刻が不明、取得元は `manual` として読み込めます。使用率は取得時点の記録のため、周期枠のリセット時刻が繰り上がっても自動でゼロにはなりません。
 
-`quota-clock sync` は組み込みの `codex-session` と `claude-code` を実行します。Codex は `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl` にある会話記録ファイルの末尾 256 KiB までを読みます。読み込む末尾には会話本文のバイトも含まれますが、取り出して返す・保存するのは使用量の項目だけです。生の行・会話本文・作業フォルダのパス・認証情報は出力・保存しません。Claude Code は以下の手順で作成した使用枠だけの statusline キャッシュを取り込みます。Antigravity の自動取得経路は未検証です。取得順序・鮮度・制約は [取得元メモ（英語）](docs/sources.md) を参照してください。
+`quota-clock sync` は組み込み collector を実行します。`codex-session` と `claude-code` に加え、利用者が以下の設定をした場合は `antigravity-statusline` のキャッシュも取り込みます。Codex は `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl` にある会話記録ファイルの末尾 256 KiB までを読みます。読み込む末尾には会話本文のバイトも含まれますが、取り出して返す・保存するのは使用量の項目だけです。生の行・会話本文・作業フォルダのパス・認証情報は出力・保存しません。Claude Code は以下の手順で作成した使用枠だけの statusline キャッシュを取り込みます。Antigravity は明示的に設定した statusline から受け取る方式です。取得順序・鮮度・制約は [取得元メモ（英語）](docs/sources.md) を参照してください。
 
 ### Claude Code `statusLine` 連携
 
@@ -152,6 +152,23 @@ Claude Code はカスタムステータスラインコマンドの標準入力�
   }
 }
 ```
+
+### Antigravity `statusLine` 連携
+
+利用する場合は `~/.gemini/antigravity-cli/settings.json` に設定してください。quota-clock が設定ファイルを変更することはありません：
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "quota-clock statusline --source antigravity"
+  }
+}
+```
+
+このコマンドは個人のメタデータを含む **全 statusline JSON を受け取ります**。保存するのは許可した `quota` の項目と取得時刻 `fetchedAt` だけで、保存先は `<home>/antigravity.json` です。記録のパスを開くことはありません。その後の `quota-clock sync` はこのキャッシュだけを取り込み、アプリやモデルを起動しません。既存の表示を残す場合は `--chain "既存のコマンド"` を追加できます。これは元の JSON 全体を指定コマンドへ渡し、その出力を表示します。`--source` を省略した場合は従来どおり Claude Code 用です。
+
+バケット名をそのまま枠名に使い、周期は推定しません。有効な `remaining_fraction` があれば `100 * (1 - fraction)` を使用率とし、`remaining_amount` だけなら使用率は不明です。リセット時刻は `reset_time`、または受信時刻を基準にした `reset_in_seconds` を使います。無効化されたバケットはキャッシュに保持しますが sync の対象から外します。使用枠のない入力・不正な入力は以前のキャッシュを上書きせず、取り込まれなかった枠も既存の時計データからは削除しません。取得時刻は保存されたスナップショットの受信時刻であり、新規照会の時刻ではありません。合成データで検証済みですが、実アプリの設定・スキーマ互換は未検証です。[取得元メモ](docs/sources.md) も参照してください。
 
 外部ツールからは公開 API を利用できます：
 

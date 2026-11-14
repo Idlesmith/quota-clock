@@ -3,12 +3,13 @@ import fs from 'node:fs';
 import { parseArgs } from 'node:util';
 import { createClock } from '../src/index.mjs';
 import { writeClaudeCodeStatusline, runStatuslineChain } from '../src/collectors/claude-code.mjs';
+import { writeAntigravityStatusline } from '../src/collectors/antigravity.mjs';
 
 const usage = `Usage:
   quota-clock set <service> <window> <when> [--used percent] [--note text] [--period minutes]
   quota-clock list [--json]
   quota-clock sync
-  quota-clock statusline [--chain <command>]
+  quota-clock statusline [--source claude-code|antigravity] [--chain <command>]
   quota-clock rm <service> [window]
   quota-clock help
 
@@ -25,7 +26,7 @@ async function main() {
     set: { used: { type: 'string' }, note: { type: 'string' }, period: { type: 'string' } },
     list: { json: { type: 'boolean' } },
     sync: {},
-    statusline: { chain: { type: 'string' } },
+    statusline: { source: { type: 'string' }, chain: { type: 'string' } },
     rm: {},
     help: {},
   };
@@ -43,8 +44,11 @@ async function main() {
   if (command === 'statusline') {
     requireArgs(0, 0);
     if (values.chain !== undefined && !values.chain.trim()) throw new Error('--chain requires a non-empty command.');
+    const writers = { 'claude-code': writeClaudeCodeStatusline, antigravity: writeAntigravityStatusline };
+    const source = values.source ?? 'claude-code';
+    if (!Object.hasOwn(writers, source)) throw new Error('Unknown statusline source. Use claude-code or antigravity.');
     const rawInput = fs.readFileSync(0, 'utf8');
-    const { summary } = writeClaudeCodeStatusline(rawInput, { home: clock.home });
+    const { summary } = writers[source](rawInput, { home: clock.home });
     if (values.chain !== undefined) {
       process.stdout.write(runStatuslineChain(values.chain, rawInput));
     } else {

@@ -40,7 +40,7 @@ npx quota-clock help
 quota-clock set <service> <window> <when> [--used percent] [--note text] [--period minutes]
 quota-clock list [--json]
 quota-clock sync
-quota-clock statusline [--chain <command>]
+quota-clock statusline [--source claude-code|antigravity] [--chain <command>]
 quota-clock rm <service> [window]
 quota-clock help
 ```
@@ -124,7 +124,7 @@ The table also shows Used, Source, and Fetched (local time); missing values appe
 JSON entries include `usedPercent` (number or null), `source` (string), and `fetchedAt` (ISO timestamp or null).
 Old records remain readable with unknown usage/time and source `manual`. Percentages are stored snapshots and do not reset automatically when a repeating reset time rolls forward.
 
-`quota-clock sync` runs both built-in collectors: `codex-session` reads the final 256 KiB of Codex conversation-record files, while `claude-code` imports its quota-only statusline cache as described below. The Codex file tails can contain conversation bytes, but only quota fields are returned or saved; raw lines, conversation text, workspace paths, and credentials are never output or persisted. Codex source files are found under `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl`. Antigravity has no verified automatic collector. See [data sources](docs/sources.md) for selection rules, freshness, and limits.
+`quota-clock sync` runs the built-in collectors: `codex-session` reads the final 256 KiB of Codex conversation-record files, while `claude-code` imports its quota-only statusline cache as described below. The Codex file tails can contain conversation bytes, but only quota fields are returned or saved; raw lines, conversation text, workspace paths, and credentials are never output or persisted. Codex source files are found under `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-*.jsonl`. The passive `antigravity-statusline` collector imports a cache only after you configure the app as described below. See [data sources](docs/sources.md) for selection rules, freshness, and limits.
 
 ### Claude Code `statusLine` integration
 
@@ -152,6 +152,23 @@ If you already have a status line script, use `--chain` to forward the original 
   }
 }
 ```
+
+### Antigravity `statusLine` integration
+
+Configure your own `~/.gemini/antigravity-cli/settings.json` to opt in (quota-clock never edits it):
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "quota-clock statusline --source antigravity"
+  }
+}
+```
+
+The command **receives the full statusline JSON**, including any personal metadata supplied by the app, but saves only allowlisted `quota` bucket fields and `fetchedAt` in `<home>/antigravity.json`. It never opens the transcript path. Then run `quota-clock sync` to import that cache; sync launches no app or model. To retain a custom status line, append `--chain "your-command"`; this deliberately forwards the original full JSON to your command and displays its output. Without `--source`, statusline retains its Claude Code behavior.
+
+Buckets become window names unchanged, with no assumed period. A valid `remaining_fraction` becomes `100 * (1 - fraction)` percent used; an absolute `remaining_amount` alone leaves usage unknown. Reset times come from `reset_time`, or from `reset_in_seconds` anchored to capture time. Disabled buckets are cached but omitted from sync. Missing/invalid quota input leaves the previous cache intact; skipped buckets do not erase previously saved clock entries. Capture time describes this stored snapshot, not a fresh quota query. This integration has synthetic-fixture coverage; live app setup/schema compatibility has not been tested here. See the [source notes](docs/sources.md).
 
 External tools can also pass their own collectors to the public API without accessing the CLI:
 
